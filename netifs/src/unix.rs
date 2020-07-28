@@ -6,6 +6,12 @@ use ipnetwork::IpNetwork;
 
 use crate::{Interface, cstr_to_string};
 
+#[repr(C)]
+pub struct ifreq {
+    pub ifr_name: [u8; libc::IFNAMSIZ],
+    pub ifr_mtu: libc::c_int,
+}
+
 pub fn get_interfaces() -> Result<Vec<Interface>, String> {
     let mut res: HashMap<String, Interface> = HashMap::new();
 
@@ -27,6 +33,20 @@ pub fn get_interfaces() -> Result<Vec<Interface>, String> {
             }
             if addr.ifa_flags & libc::IFF_UP as u32 != 0 {
                 interface.is_up = true;
+            }
+
+            let sock = libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0);
+            if sock >= 0 {
+                let mut req = ifreq {
+                    ifr_name: [0; libc::IFNAMSIZ],
+                    ifr_mtu: 0,
+                };
+
+                copy_slice(&mut req.ifr_name, name.as_bytes());
+
+                if libc::ioctl(sock, libc::SIOCGIFMTU, &mut req) >= 0 {
+                    interface.mtu = req.ifr_mtu as usize;
+                }
             }
 
             match (*addr.ifa_addr).sa_family as libc::c_int {
@@ -55,7 +75,7 @@ pub fn get_interfaces() -> Result<Vec<Interface>, String> {
                     assert_eq!(sin6.sin6_family, sin6_mask.sin6_family);
                     let ip = IpAddr::V6(Ipv6Addr::from(sin6.sin6_addr.s6_addr));
                     let mask = IpAddr::V6(Ipv6Addr::from(sin6_mask.sin6_addr.s6_addr));
-                    
+
                     match IpNetwork::with_netmask(ip, mask) {
                         Ok(ipn) => interface.ip_addresses.push(ipn),
                         Err(e) => return Err(format!("Unable to construct IpNetwork: {}", e))
@@ -74,4 +94,15 @@ pub fn get_interfaces() -> Result<Vec<Interface>, String> {
     }
 
     Ok(res.into_iter().map(|(_key, val)| val).collect())
+}
+
+fn copy_slice(dst: &mut [u8], src: &[u8]) -> usize {
+    let mut c = 0;
+
+    for (d, s) in dst.iter_mut().zip(src.iter()) {
+        *d = *s;
+        c += 1;
+    }
+
+    c
 }
