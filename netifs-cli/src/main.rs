@@ -15,5 +15,6 @@ fn main() {
         for ip in interface.ip_addresses {
             println!("\tIP: {}", ip);
         }
+        println!("\tMTU: {}", interface.mtu);
     }
 }
