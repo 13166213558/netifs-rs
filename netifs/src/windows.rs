@@ -27,7 +27,7 @@ pub fn get_interfaces() -> Result<Vec<Interface>, String> {
         let mut res = GetAdaptersAddresses(0, 0, 0 as PVOID, buffer.as_mut_ptr(), sizeptr);
 
         // Since we are providing the buffer, it might be too small. Check for overflow
-        // and try again with the required buffer size. There is a chance for a race 
+        // and try again with the required buffer size. There is a chance for a race
         // condition here if an interface is added between the two calls - however
         // looping potentially forever seems more dangerous.
         if res == ERROR_BUFFER_OVERFLOW {
@@ -43,7 +43,7 @@ pub fn get_interfaces() -> Result<Vec<Interface>, String> {
         let mut adapterptr = buffer.as_ptr() as PIP_ADAPTER_ADDRESSES ;
         while !adapterptr.is_null() {
             let a = *adapterptr;
-            
+
             let name = cstr_to_string(a.AdapterName);
             let mut interface = Interface::new(name);
             interface.display_name = U16CString::from_ptr_str(a.Description).to_string_lossy();
@@ -53,6 +53,7 @@ pub fn get_interfaces() -> Result<Vec<Interface>, String> {
             if a.OperStatus == IfOperStatusUp {
                 interface.is_up = true;
             }
+            interface.mtu = a.Mtu as usize;
 
             if a.PhysicalAddressLength == 0 {
                 // 0 indicates no MAC address, eg. on the loopback
@@ -96,7 +97,7 @@ pub fn get_interfaces() -> Result<Vec<Interface>, String> {
 
                 assert_ne!(current, addr.Next);
                 current = addr.Next;
-            }          
+            }
 
             res.push(interface);
             assert_ne!(adapterptr, a.Next);

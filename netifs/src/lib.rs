@@ -36,6 +36,7 @@ pub struct Interface {
     pub display_name: String,
     pub ip_addresses: Vec<IpNetwork>,
     pub mac_address: Option<MacAddress>,
+    pub mtu: usize,
     pub is_loopback: bool,
     pub is_up: bool,
 }
@@ -48,6 +49,7 @@ impl Interface {
             display_name: name,
             ip_addresses: Vec::new(),
             mac_address: None,
+            mtu: 0,
             is_loopback: false,
             is_up: false,
         }
